@@ -13,7 +13,7 @@
  * 2        10-04       0.0.2           Minors updates and Headers creation
  * 3        11-04       0.1.0           Minors updates and function utf8_32 implemented
  * 4        13-04       0.1.1           Minors updates and optmizations, readable code 
- * 5        14-04       0.2.0           Enum to Errors, add regions,
+ * 5        14-04       0.2.0           Enum for Errors, add regions,
  */
 
 
@@ -28,9 +28,10 @@
 #define MAXPATHSIZE 1024
 #define TRUE 1
 #define FALSE 0
-#define BIGBOOM 0x0000feff
-#define LITTLEBOOM 0xfffe0000 
 
+/* Global */
+
+unsigned int BigBOOM = 0x0000feff ; 
 
 /* Private methods */
 //Criar enum para erros
@@ -64,8 +65,11 @@ unsigned int BigToLittle(unsigned int outByte);
 
 int utf32_8(FILE* inFile, FILE* outFile)
 {
+    puts("its in");
     return 0 ;
 }
+
+
 
 int utf8_32(FILE* inFile, FILE* outFile)
 {
@@ -73,32 +77,26 @@ int utf8_32(FILE* inFile, FILE* outFile)
     unsigned char auxInByte[3];
     unsigned int outByte;
 
-    int numBytesToRead;
-    unsigned int little = 0xfffe0000;
+    int tamInOutByte;
+    unsigned int little =  BigToLittle(BigBOOM);
 
     /* Introduces BOOM Byte in Utf32 File */
-    fwrite( little,sizeof(outByte) ,1 ,outFile);
+    fwrite(&little, sizeof(little) , 1, outFile);
 
-    while(fread(inByte, sizeof(inByte), 1, inFile))
+    while(fread(&inByte, sizeof(inByte), 1, inFile) != EOF)
     {
-        if (numBytesToRead = IdentifyCharSize(inByte)) 
+        if (tamInOutByte = IdentifyCharSize(inByte)) 
         { 
-            if (!fread(auxInByte, numBytesToRead, 1, inFile))
+            if (!fread(auxInByte, tamInOutByte, 1, inFile))
             {
                 perror("Fail to identify size of char ");
-                exit(0);
+                exit(1);
             }
         }
 
-        outByte = BigToLittle(GetUnicodeFromUtf8(inByte, auxInByte, numBytesToRead));
-        /* tranformar para unsigned int  */
-        /* retornar 1  */
+        outByte = BigToLittle(GetUnicodeFromUtf8(inByte, auxInByte, tamInOutByte));
 
-        if (!fwrite(outByte, sizeof(outByte), 1, outFile))
-        {
-            perror("Error writting at new file ");
-            exit(0);
-        }
+        fwrite(&outByte, tamInOutByte, 1, outFile);
     }
 
 }
@@ -117,6 +115,7 @@ int IdentifyCharSize(unsigned char inByte)
     while (loop)
     {
         aux = inByte ;
+        printf("%x, %x, %d\n", inByte,(aux >> (8-loop)), (aux >> (8-loop)) && 0x01 );
         if ((aux >> (8-loop)) && 0x01 )
         {
             ret++;
@@ -124,13 +123,13 @@ int IdentifyCharSize(unsigned char inByte)
         }
         else
         {
-            loop = FALSE;
+            break;
         }
 
-        if (loop > 4)
+        if (loop > 5)
         {
             perror("Erro to identify given byte");
-            exit(0);
+            exit(1);
         }
         
     }
@@ -140,7 +139,7 @@ int IdentifyCharSize(unsigned char inByte)
 
 unsigned int GetUnicodeFromUtf8(unsigned char inByte, unsigned char auxInByte[3], int n)
 {
-    unsigned int ret;
+    unsigned int ret = 0x00 ;
     unsigned char aux;
     int desloc = 6;
     int cont;
@@ -179,23 +178,18 @@ unsigned int BigToLittle(unsigned int outByte)
         ret += aux ;
         ret = ret << desloc;
     }
-
+    
     return ret;
 
 }
 
-int Is8Utf(FILE* inAuxFile)
+int Is8Utf(FILE* inAuxFile) /* main */
 {
-    unsigned int firstChar[1];
+    unsigned int firstChar;
 
-    fread(firstChar, sizeof(firstChar), 1, inAuxFile);
+    fread(&firstChar, sizeof(firstChar), 1, inAuxFile);
 
-    if (firstChar[0] != LITTLEBOOM && firstChar[0] != BIGBOOM)
-    {
-        return FALSE;
-    }
-
-    return TRUE;
+    return firstChar != BigToLittle(BigBOOM) && firstChar != BigBOOM;
 }
 
 #pragma endregion
@@ -222,7 +216,7 @@ int main ()
     if (!(filesToConvert = opendir(inFilesDir)))
     {
         perror("Error open directory \"/toConvert\", please read the README.md file");
-        exit(0);
+        exit(1);
     }
 
     /* loop through the files to be converted  */
@@ -261,5 +255,36 @@ int main ()
     /* Close directory */
     closedir(filesToConvert);
 
-    return 0 ;
+   
+   
+   
+    /***
+     * 
+     *  
+     * To make a UTF32 file use https://onlineutf8tools.com/convert-utf8-to-utf32 add the hexadecimal code at the var bytes and compile
+        
+        FILE* file;
+
+        unsigned int bytes[] = {  https://onlineutf8tools.com/convert-utf32-to-utf8};
+
+        unsigned int outBytes[26];
+        int cont = 0;
+
+        file = fopen("utf32.txt", "wb");
+        fwrite(&bytes, sizeof(bytes),1, file);
+        fclose(file);
+
+        file = fopen("utf32.txt", "rb");
+        fread(&outBytes, sizeof(outBytes),1, file);
+        while(cont<26)
+        {
+            printf("%x\n",outBytes[cont++]);
+        }
+        fclose(file);
+
+    *
+    *
+    *
+    * */
+    
 }
